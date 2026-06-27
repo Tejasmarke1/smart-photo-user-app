@@ -63,7 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final request = SendOtpRequest(
       email: !_isPhoneMode ? inputVal : null,
       phone: _isPhoneMode ? inputVal : null,
-      otpType: !_isPhoneMode ? 'email' : 'phone',
+      otpType: "login",
     );
 
     try {
@@ -81,7 +81,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _showSnackBar(response.message, isError: true);
       }
     } catch (e) {
-      _showSnackBar(e is DioException ? (e.response?.data['detail'] ?? "Failed to send OTP") : "Connection failed", isError: true);
+      String errMsg = "Connection failed";
+      if (e is DioException) {
+        final detail = e.response?.data?['detail'];
+        if (detail != null) {
+          if (detail is String) {
+            errMsg = detail;
+          } else if (detail is List) {
+            try {
+              errMsg = detail.map((err) => err['msg'] ?? '').join(', ');
+            } catch (_) {
+              errMsg = detail.toString();
+            }
+          } else {
+            errMsg = detail.toString();
+          }
+        } else {
+          errMsg = "Failed to send OTP";
+        }
+      }
+      _showSnackBar(errMsg, isError: true);
     } finally {
       setState(() {
         _isLoading = false;
@@ -136,7 +155,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _showSnackBar(response.message, isError: true);
       }
     } catch (e) {
-      _showSnackBar(e is DioException ? (e.response?.data['detail'] ?? "Invalid OTP") : "Verification failed", isError: true);
+      String errMsg = "Verification failed";
+      if (e is DioException) {
+        final detail = e.response?.data?['detail'];
+        if (detail != null) {
+          if (detail is String) {
+            errMsg = detail;
+          } else if (detail is List) {
+            try {
+              errMsg = detail.map((err) => err['msg'] ?? '').join(', ');
+            } catch (_) {
+              errMsg = detail.toString();
+            }
+          } else {
+            errMsg = detail.toString();
+          }
+        } else {
+          errMsg = "Invalid OTP";
+        }
+      }
+      _showSnackBar(errMsg, isError: true);
     } finally {
       setState(() {
         _isLoading = false;
