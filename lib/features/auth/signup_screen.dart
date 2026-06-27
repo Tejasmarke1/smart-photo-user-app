@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
-import 'package:camera/camera.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
@@ -31,71 +30,28 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   
-  CameraController? _cameraController;
-  List<CameraDescription>? _cameras;
-  
-  bool _isCameraReady = false;
   bool _isLoading = false;
   File? _capturedPhoto;
 
   @override
-  void initState() {
-    super.initState();
-    _initializeCamera();
-  }
-
-  @override
   void dispose() {
-    _cameraController?.dispose();
     _nameController.dispose();
     super.dispose();
   }
 
-  Future<void> _initializeCamera() async {
-    try {
-      _cameras = await availableCameras();
-      if (_cameras != null && _cameras!.isNotEmpty) {
-        // Locate front camera for selfie capture
-        final frontCam = _cameras!.firstWhere(
-          (cam) => cam.lensDirection == CameraLensDirection.front,
-          orElse: () => _cameras!.first,
-        );
-
-        _cameraController = CameraController(
-          frontCam,
-          ResolutionPreset.medium,
-          enableAudio: false,
-        );
-
-        await _cameraController!.initialize();
-        if (mounted) {
-          setState(() {
-            _isCameraReady = true;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Failed to access front camera: $e");
-    }
-  }
-
-  Future<void> _capturePhoto() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
-
-    try {
-      final XFile file = await _cameraController!.takePicture();
+  Future<void> _startBiometricScan() async {
+    final result = await context.push('/face-verification');
+    if (result != null && result is String) {
       setState(() {
-        _capturedPhoto = File(file.path);
+        _capturedPhoto = File(result);
       });
-    } catch (e) {
-      _showSnackBar("Failed to capture photo", isError: true);
     }
   }
 
   Future<void> _completeSignup() async {
     if (!_formKey.currentState!.validate()) return;
     if (_capturedPhoto == null) {
-      _showSnackBar("A live profile capture is required to create an account", isError: true);
+      _showSnackBar("A live biometric profile verification is required to create an account", isError: true);
       return;
     }
 
@@ -203,51 +159,46 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 const SizedBox(height: LuminaTokens.spacingXs),
 
                 Text(
-                  "Capture a live profile picture to complete your account registration.",
+                  "Perform a biometric verification scan to complete your account registration.",
                   style: Theme.of(context).textTheme.bodyMedium,
                 ).animate().fade(delay: 100.ms),
 
                 const SizedBox(height: LuminaTokens.spacingXxl),
 
-                // 3D Scanner / Camera Capture Card
+                // Biometric 3D Scanner Button or Result Image
                 Center(
                   child: Column(
                     children: [
-                      Container(
-                        width: 220,
-                        height: 220,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _capturedPhoto != null ? LuminaTokens.success : LuminaTokens.primaryLight,
-                            width: 3.0,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (_capturedPhoto != null ? LuminaTokens.success : LuminaTokens.primary)
-                                  .withOpacity(0.35),
-                              blurRadius: 18,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: _capturedPhoto != null
-                              ? Image.file(_capturedPhoto!, fit: BoxFit.cover)
-                              : _buildCameraWidget(),
-                        ),
-                      ),
-                      const SizedBox(height: LuminaTokens.spacingLg),
-                      
-                      // Secondary Action (Capture / Retake)
                       if (_capturedPhoto != null) ...[
+                        Container(
+                          width: 220,
+                          height: 220,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: LuminaTokens.success,
+                              width: 3.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: LuminaTokens.success.withOpacity(0.35),
+                                blurRadius: 18,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.file(_capturedPhoto!, fit: BoxFit.cover),
+                          ),
+                        ),
+                        const SizedBox(height: LuminaTokens.spacingLg),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.check_circle_rounded, color: LuminaTokens.success, size: 20),
+                            const Icon(Icons.verified_user_rounded, color: LuminaTokens.success, size: 20),
                             const SizedBox(width: LuminaTokens.spacingXs),
                             Text(
-                              "Holographic Scan Completed",
+                              "Biometrics Verified",
                               style: GoogleFonts.outfit(
                                 color: LuminaTokens.success,
                                 fontWeight: LuminaTokens.fontWeightBold,
@@ -258,33 +209,68 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         ),
                         const SizedBox(height: LuminaTokens.spacingSm),
                         TextButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _capturedPhoto = null;
-                            });
-                          },
+                          onPressed: _startBiometricScan,
                           icon: const Icon(Icons.refresh_rounded, color: LuminaTokens.darkText),
                           label: Text(
-                            "Retake Capture",
-                            style: GoogleFonts.inter(color: LuminaTokens.darkText, fontWeight: LuminaTokens.fontWeightMedium),
+                            "Retake Biometric Scan",
+                            style: GoogleFonts.inter(
+                              color: LuminaTokens.darkText,
+                              fontWeight: LuminaTokens.fontWeightMedium,
+                            ),
                           ),
                         ),
                       ] else ...[
+                        GestureDetector(
+                          onTap: _startBiometricScan,
+                          child: Container(
+                            width: 220,
+                            height: 220,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: LuminaTokens.primaryLight.withOpacity(0.4),
+                                width: 2.0,
+                              ),
+                              color: Colors.white.withOpacity(0.03),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: LuminaTokens.primary.withOpacity(0.15),
+                                  blurRadius: 15,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.face_retouching_natural_rounded,
+                                    size: 48,
+                                    color: LuminaTokens.primaryLight,
+                                  ).animate(onPlay: (c) => c.repeat(reverse: true))
+                                   .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 2.seconds),
+                                  const SizedBox(height: LuminaTokens.spacingSm),
+                                  Text(
+                                    "START FACE ID SCAN",
+                                    style: GoogleFonts.outfit(
+                                      fontSize: LuminaTokens.textXs,
+                                      fontWeight: LuminaTokens.fontWeightBold,
+                                      color: LuminaTokens.primaryLight,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: LuminaTokens.spacingLg),
                         Text(
-                          "Fit your face inside the scanner frame",
+                          "Tap the scanner to verify your identity.",
                           style: GoogleFonts.outfit(
                             color: LuminaTokens.darkTextMuted,
                             fontSize: LuminaTokens.textXs,
-                          ),
-                        ),
-                        const SizedBox(height: LuminaTokens.spacingMd),
-                        IconButton.filled(
-                          onPressed: _isCameraReady ? _capturePhoto : null,
-                          icon: const Icon(Icons.camera_front_rounded, size: 28),
-                          style: IconButton.styleFrom(
-                            backgroundColor: LuminaTokens.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.all(LuminaTokens.spacingMd),
                           ),
                         ),
                       ],
@@ -336,66 +322,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildCameraWidget() {
-    if (!_isCameraReady || _cameraController == null) {
-      return Container(
-        color: LuminaTokens.darkSurface,
-        child: const Center(
-          child: CircularProgressIndicator(color: LuminaTokens.primaryLight),
-        ),
-      );
-    }
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CameraPreview(_cameraController!),
-        
-        // Circular Holographic sweeps laser overlay
-        Positioned.fill(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Container(
-              height: 4,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: LuminaTokens.primaryLight.withOpacity(0.85),
-                    blurRadius: 10,
-                    spreadRadius: 2.5,
-                  ),
-                ],
-                gradient: const LinearGradient(
-                  colors: [Colors.transparent, LuminaTokens.primaryLight, Colors.transparent],
-                ),
-              ),
-            ),
-          ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-           .slideY(begin: 0.05, end: 0.95, duration: 1.8.seconds, curve: Curves.easeInOut),
-        ),
-        
-        // Ring overlay grid guide line
-        Positioned.fill(
-          child: Center(
-            child: Container(
-              width: 170,
-              height: 170,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: LuminaTokens.primaryLight.withOpacity(0.25),
-                  width: 1.0,
-                  style: BorderStyle.solid,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
