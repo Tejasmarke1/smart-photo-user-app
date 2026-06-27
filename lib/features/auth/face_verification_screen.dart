@@ -127,6 +127,8 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
     }
   }
 
+  File? _verifiedPhotoFile;
+
   void _startFaceDetectionLoop() {
     _detectionTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       if (!_isCameraReady || _cameraController == null || _isProcessingFrame || _state == VerificationState.verified) {
@@ -145,6 +147,7 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
         if (mounted) {
           if (result['detected'] == true) {
             // Face found!
+            _verifiedPhotoFile = photoFile;
             setState(() {
               _landmarks = result['landmarks'] ?? [];
               _state = VerificationState.detected;
@@ -165,7 +168,7 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
                 // Show success callback / pop back to home after 2.5 seconds
                 Future.delayed(const Duration(milliseconds: 2500), () {
                   if (mounted) {
-                    context.pop(true);
+                    context.pop(_verifiedPhotoFile!.path);
                   }
                 });
               }
@@ -178,12 +181,12 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
               _rotationController.duration = const Duration(seconds: 8);
               _rotationController.repeat();
             });
+            
+            // Clean up temporary photo since no face was detected
+            if (await photoFile.exists()) {
+              await photoFile.delete();
+            }
           }
-        }
-        
-        // Clean up temporary photo
-        if (await photoFile.exists()) {
-          await photoFile.delete();
         }
       } catch (e) {
         debugPrint("Face detection error: $e");
@@ -268,7 +271,7 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
                   
                   // Screen Header Title
                   Text(
-                    _state == VerificationState.verified ? "IDENTITY VERIFIED" : "BIOMETRIC KEY-ID",
+                    _state == VerificationState.verified ? "SELFIE CAPTURED" : "FACE PROFILE SETUP",
                     style: GoogleFonts.outfit(
                       fontSize: LuminaTokens.textXl,
                       fontWeight: LuminaTokens.fontWeightBold,
@@ -281,8 +284,8 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
 
                   Text(
                     _state == VerificationState.verified 
-                        ? "Authentication scan matches profile payload." 
-                        : "Fit your face within the frame to verify identity.",
+                        ? "Selfie scan completed successfully!" 
+                        : "Fit your face inside the frame to setup your face profile.",
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: LuminaTokens.textXs,
@@ -590,9 +593,9 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
       case VerificationState.searching:
         return "POSITION FACE INSIDE FRAME";
       case VerificationState.detected:
-        return "FACE DETECTED... VERIFYING";
+        return "FACE DETECTED... ANALYZING";
       case VerificationState.verified:
-        return "IDENTITY VERIFIED";
+        return "SELFIE CAPTURED";
     }
   }
 }

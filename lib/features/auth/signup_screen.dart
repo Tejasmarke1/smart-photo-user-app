@@ -51,7 +51,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   Future<void> _completeSignup() async {
     if (!_formKey.currentState!.validate()) return;
     if (_capturedPhoto == null) {
-      _showSnackBar("A live biometric profile verification is required to create an account", isError: true);
+      _showSnackBar("A live profile selfie is required to find your photos in albums", isError: true);
       return;
     }
 
@@ -159,7 +159,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 const SizedBox(height: LuminaTokens.spacingXs),
 
                 Text(
-                  "Perform a biometric verification scan to complete your account registration.",
+                  "Perform a quick selfie scan to automatically find your photos inside shared albums.",
                   style: Theme.of(context).textTheme.bodyMedium,
                 ).animate().fade(delay: 100.ms),
 
@@ -191,14 +191,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             child: Image.file(_capturedPhoto!, fit: BoxFit.cover),
                           ),
                         ),
-                        const SizedBox(height: LuminaTokens.spacingLg),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(Icons.verified_user_rounded, color: LuminaTokens.success, size: 20),
                             const SizedBox(width: LuminaTokens.spacingXs),
                             Text(
-                              "Biometrics Verified",
+                              "Selfie Profile Verified",
                               style: GoogleFonts.outfit(
                                 color: LuminaTokens.success,
                                 fontWeight: LuminaTokens.fontWeightBold,
@@ -212,7 +211,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           onPressed: _startBiometricScan,
                           icon: const Icon(Icons.refresh_rounded, color: LuminaTokens.darkText),
                           label: Text(
-                            "Retake Biometric Scan",
+                            "Retake Selfie Scan",
                             style: GoogleFonts.inter(
                               color: LuminaTokens.darkText,
                               fontWeight: LuminaTokens.fontWeightMedium,
@@ -252,7 +251,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                                    .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 2.seconds),
                                   const SizedBox(height: LuminaTokens.spacingSm),
                                   Text(
-                                    "START FACE ID SCAN",
+                                    "START SELFIE SCAN",
                                     style: GoogleFonts.outfit(
                                       fontSize: LuminaTokens.textXs,
                                       fontWeight: LuminaTokens.fontWeightBold,
@@ -267,7 +266,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         ),
                         const SizedBox(height: LuminaTokens.spacingLg),
                         Text(
-                          "Tap the scanner to verify your identity.",
+                          "Tap the scanner to capture your search selfie.",
                           style: GoogleFonts.outfit(
                             color: LuminaTokens.darkTextMuted,
                             fontSize: LuminaTokens.textXs,

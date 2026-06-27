@@ -93,7 +93,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (authState.isLoading) return null;
 
       final isGoingToSplash = state.matchedLocation == '/splash';
-      final isGoingToAuth = state.matchedLocation == '/login' || state.matchedLocation == '/signup';
+      final isGoingToAuth = state.matchedLocation == '/login' ||
+                            state.matchedLocation == '/signup' ||
+                            state.matchedLocation == '/face-verification';
 
       if (!authState.isAuthenticated) {
         if (!isGoingToSplash && !isGoingToAuth) {
