@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/signup_screen.dart';
+import '../../features/auth/face_verification_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/album/album_detail_screen.dart';
 import '../../features/search/selfie_search_screen.dart';
@@ -37,6 +38,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             phone: extra?['phone'] as String?,
           );
         },
+      ),
+      GoRoute(
+        path: '/face-verification',
+        builder: (context, state) => const FaceVerificationScreen(),
       ),
       GoRoute(
         path: '/home',
