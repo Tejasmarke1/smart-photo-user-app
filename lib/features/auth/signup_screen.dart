@@ -31,6 +31,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController();
   
   bool _isLoading = false;
+  bool _isNavigating = false;
   File? _capturedPhoto;
 
   @override
@@ -40,15 +41,29 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   }
 
   Future<void> _startBiometricScan() async {
-    final result = await context.push('/face-verification');
-    if (result != null && result is String) {
-      setState(() {
-        _capturedPhoto = File(result);
-      });
+    if (_isNavigating) return;
+    setState(() {
+      _isNavigating = true;
+    });
+
+    try {
+      final result = await context.push('/face-verification');
+      if (result != null && result is String) {
+        setState(() {
+          _capturedPhoto = File(result);
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isNavigating = false;
+        });
+      }
     }
   }
 
   Future<void> _completeSignup() async {
+    if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
     if (_capturedPhoto == null) {
       _showSnackBar("A live profile selfie is required to find your photos in albums", isError: true);

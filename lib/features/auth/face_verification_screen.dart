@@ -131,67 +131,84 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
 
   void _startFaceDetectionLoop() {
     _detectionTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
-      if (!_isCameraReady || _cameraController == null || _isProcessingFrame || _state == VerificationState.verified) {
+      if (!mounted || !_isCameraReady || _cameraController == null || _isProcessingFrame || _state == VerificationState.verified) {
         return;
       }
+      
+      if (!_cameraController!.value.isInitialized || _cameraController!.value.isTakingPicture) {
+        return;
+      }
+      
       _isProcessingFrame = true;
 
       try {
+        if (!mounted) return;
         final XFile file = await _cameraController!.takePicture();
+        if (!mounted) return;
+        
         final File photoFile = File(file.path);
         
         final dio = Dio();
         final client = ApiClient(dio);
         final result = await client.detectLiveFace(photoFile);
 
-        if (mounted) {
-          if (result['detected'] == true) {
-            // Face found!
-            _verifiedPhotoFile = photoFile;
-            setState(() {
-              _landmarks = result['landmarks'] ?? [];
-              _state = VerificationState.detected;
-              
-              // Speed up rotation anim to indicate analysis
-              _rotationController.duration = const Duration(seconds: 3);
-              _rotationController.repeat();
-            });
+        if (!mounted) {
+          if (await photoFile.exists()) {
+            await photoFile.delete();
+          }
+          return;
+        }
 
-            // Trigger success verification flow after 2 seconds
-            Future.delayed(const Duration(seconds: 2), () {
-              if (mounted && _state == VerificationState.detected) {
-                setState(() {
-                  _state = VerificationState.verified;
-                });
-                _rippleController.forward();
-                
-                // Show success callback / pop back to home after 2.5 seconds
-                Future.delayed(const Duration(milliseconds: 2500), () {
-                  if (mounted) {
-                    context.pop(_verifiedPhotoFile!.path);
-                  }
-                });
-              }
-            });
-          } else {
-            // No face found, reset searching state
-            setState(() {
-              _state = VerificationState.searching;
-              _landmarks = [];
-              _rotationController.duration = const Duration(seconds: 8);
-              _rotationController.repeat();
-            });
+        if (result['detected'] == true) {
+          // Face found!
+          _verifiedPhotoFile = photoFile;
+          setState(() {
+            _landmarks = result['landmarks'] ?? [];
+            _state = VerificationState.detected;
             
-            // Clean up temporary photo since no face was detected
-            if (await photoFile.exists()) {
-              await photoFile.delete();
+            // Speed up rotation anim to indicate analysis
+            _rotationController.duration = const Duration(seconds: 3);
+            _rotationController.repeat();
+          });
+
+          // Trigger success verification flow after 2 seconds
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted && _state == VerificationState.detected) {
+              setState(() {
+                _state = VerificationState.verified;
+              });
+              _rippleController.forward();
+              
+              // Show success callback / pop back to home after 2.5 seconds
+              Future.delayed(const Duration(milliseconds: 2500), () {
+                if (mounted) {
+                  context.pop(_verifiedPhotoFile!.path);
+                }
+              });
             }
+          });
+        } else {
+          // No face found, reset searching state
+          setState(() {
+            _state = VerificationState.searching;
+            _landmarks = [];
+            _rotationController.duration = const Duration(seconds: 8);
+            _rotationController.repeat();
+          });
+          
+          // Clean up temporary photo since no face was detected
+          if (await photoFile.exists()) {
+            await photoFile.delete();
           }
         }
       } catch (e) {
         debugPrint("Face detection error: $e");
       } finally {
-        _isProcessingFrame = false;
+        if (mounted) {
+          setState(() {
+            _isProcessingFrame = false;
+          });
+        }
       }
     });
   }
