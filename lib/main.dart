@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/lumina_theme.dart';
 import 'core/router/router.dart';
 import 'core/services/notification_service.dart';
@@ -10,7 +11,7 @@ void main() async {
   // Note: Firebase.initializeApp() is simulated if GoogleServices configuration files are missing.
   // We wrap this inside a try-catch to allow development builds without hard blockers.
   try {
-    // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp();
   } catch (_) {
     // Fail silently in development
   }
