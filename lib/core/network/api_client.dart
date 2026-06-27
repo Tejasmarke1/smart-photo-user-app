@@ -74,6 +74,10 @@ abstract class ApiClient {
     @Query("threshold") double threshold,
   );
 
+  @POST("/faces/detect-live")
+  @MultiPart()
+  Future<Map<String, dynamic>> detectLiveFace(@Part(name: "file") File file);
+
   // ==========================================
   // Device tokens for push notifications
   // ==========================================
