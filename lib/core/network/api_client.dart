@@ -22,6 +22,10 @@ abstract class ApiClient {
   @POST("/auth/signup")
   Future<SignupResponse> signup(@Body() SignupRequest request);
 
+  @POST("/auth/profile-picture")
+  @MultiPart()
+  Future<Map<String, dynamic>> uploadProfilePicture(@Part(name: "file") File file);
+
   @POST("/auth/refresh")
   Future<RefreshTokenResponse> refreshToken(@Body() RefreshTokenRequest request);
 
