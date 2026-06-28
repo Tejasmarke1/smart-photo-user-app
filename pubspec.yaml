@@ -30,6 +30,7 @@ dependencies:
   cached_network_image: ^3.3.1
   photo_view: ^0.14.0
   shimmer: ^3.0.0
+  image_picker: ^1.0.7
   flutter_staggered_grid_view: ^0.7.0
 
   # ── Camera & QR ──
@@ -56,6 +57,7 @@ dependencies:
   # ── Misc ──
   path_provider: ^2.1.2
   url_launcher: ^6.2.5
+  share_plus: ^12.0.2
 
 dev_dependencies:
   flutter_test:

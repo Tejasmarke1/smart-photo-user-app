@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
@@ -79,145 +81,232 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> with Sing
     }
   }
 
+  String _formatLastUpdated() {
+    if (_photos.isEmpty) return "Recently";
+    final lastPhoto = _photos.first;
+    if (lastPhoto.createdAt != null) {
+      try {
+        final date = DateTime.parse(lastPhoto.createdAt!).toLocal();
+        final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+        final ampm = date.hour >= 12 ? "pm" : "am";
+        final minute = date.minute.toString().padLeft(2, '0');
+        return "$hour:$minute $ampm";
+      } catch (_) {}
+    }
+    return "Recently";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: LuminaTokens.darkBg,
-      body: _isLoading
-          ? _buildLoadingShimmer()
-          : NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  _buildSliverAppBar(),
-                ];
-              },
-              body: Column(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                color: Colors.white10,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.group_rounded, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TabBar(
-                    controller: _tabController,
-                    indicatorColor: LuminaTokens.primary,
-                    labelColor: LuminaTokens.darkText,
-                    unselectedLabelColor: LuminaTokens.darkTextMuted,
-                    tabs: const [
-                      Tab(text: "Photos"),
-                      Tab(text: "People"),
-                    ],
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildPhotosTab(),
-                        _buildPeopleTab(),
-                      ],
+                  Text(
+                    _album?.title ?? "My Trip",
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
-                ],
-              ),
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.push('/selfie-search/${widget.id}', extra: widget.sharingCode);
-        },
-        backgroundColor: LuminaTokens.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.face_retouching_natural_rounded),
-        label: const Text("Find My Photos"),
-      ),
-    );
-  }
-
-  Widget _buildSliverAppBar() {
-    final coverUrl = _album?.coverPhotoUrl;
-    
-    return SliverAppBar(
-      expandedHeight: 240.0,
-      floating: false,
-      pinned: true,
-      backgroundColor: LuminaTokens.darkBg,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Text(
-          _album?.title ?? "Album details",
-          style: GoogleFonts.outfit(
-            fontWeight: LuminaTokens.fontWeightBold,
-            color: Colors.white,
-            fontSize: LuminaTokens.textXl,
-            shadows: [
-              const Shadow(blurRadius: 10.0, color: Colors.black54, offset: Offset(0, 2))
-            ],
-          ),
-        ),
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            coverUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: coverUrl,
-                    fit: Cover.cover.fit,
-                    errorWidget: (context, url, error) => _buildPlaceholderBackground(),
-                  )
-                : _buildPlaceholderBackground(),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.85)],
-                ),
-              ),
-            ),
-            // Event Details overlay
-            Positioned(
-              bottom: 48,
-              left: LuminaTokens.spacingLg,
-              right: LuminaTokens.spacingLg,
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on_rounded, color: LuminaTokens.primaryLight, size: 16),
-                  const SizedBox(width: 4),
                   Text(
-                    _album?.location ?? "Virtual Event",
-                    style: GoogleFonts.inter(color: Colors.white70, fontSize: LuminaTokens.textXs),
-                  ),
-                  const Spacer(),
-                  const Icon(Icons.camera_alt_rounded, color: LuminaTokens.primaryLight, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    "${_album?.photoCount ?? 0} photos",
-                    style: GoogleFonts.inter(color: Colors.white70, fontSize: LuminaTokens.textXs),
+                    "Last updated on ${_formatLastUpdated()}",
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF4C7AA8),
+                      fontSize: 10,
+                    ),
                   ),
                 ],
               ),
             ),
           ],
         ),
+        actions: [
+          // Invite button (Image Link Icon with Text underneath)
+          GestureDetector(
+            onTap: () {
+              if (_album != null) {
+                context.push('/share-link/${widget.id}', extra: _album);
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.link_rounded, color: Color(0xFF4C7AA8), size: 20),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Invite",
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF4C7AA8),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+            onPressed: () {
+              if (_album != null) {
+                context.push('/group-settings/${widget.id}', extra: _album);
+              }
+            },
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? _buildLoadingShimmer()
+          : _photos.isEmpty
+              ? _buildEmptyState()
+              : Column(
+                  children: [
+                    TabBar(
+                      controller: _tabController,
+                      indicatorColor: LuminaTokens.primaryLight,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: LuminaTokens.darkTextMuted,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      tabs: const [
+                        Tab(text: "Photos"),
+                        Tab(text: "People"),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildPhotosTab(),
+                          _buildPeopleTab(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'upload_fab',
+            onPressed: () {
+              context.push('/upload-photos/${widget.id}', extra: _album?.title).then((val) {
+                if (val == true) _loadAlbumDetails();
+              });
+            },
+            backgroundColor: LuminaTokens.primary,
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.arrow_upward_rounded, size: 24),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "UPLOAD",
+            style: GoogleFonts.inter(
+              color: LuminaTokens.primaryLight,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPlaceholderBackground() {
+  Widget _buildEmptyState() {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LuminaTokens.primaryGradient,
-      ),
-      child: Icon(
-        Icons.photo_library_rounded,
-        size: 64,
-        color: Colors.white.withOpacity(0.4),
+      color: Colors.black,
+      width: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 40),
+          // Illustration asset copied earlier matching Image 1
+          Image.asset(
+            'assets/images/no_photos_illustration.png',
+            width: 260,
+            height: 260,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(
+                Icons.collections_bookmark_rounded,
+                size: 100,
+                color: LuminaTokens.primaryLight.withOpacity(0.5),
+              );
+            },
+          ).animate().fade(duration: 500.ms).scale(delay: 100.ms),
+          const SizedBox(height: 24),
+          Text(
+            "No Photos Found",
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade400,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Gradient start uploading capsule button
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2E6B9E), Color(0xFF1E4366)],
+              ),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
+              ),
+              onPressed: () => context.push('/upload-photos/${widget.id}', extra: _album?.title).then((val) {
+                if (val == true) _loadAlbumDetails();
+              }),
+              child: Text(
+                "Start Uploading",
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 80),
+        ],
       ),
     );
   }
 
   Widget _buildPhotosTab() {
-    if (_photos.isEmpty) {
-      return Center(
-        child: Text(
-          "No photos found in this album.",
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      );
-    }
-
     return MasonryGridView.count(
       padding: const EdgeInsets.all(LuminaTokens.spacingMd),
       crossAxisCount: 2,
@@ -290,8 +379,7 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> with Sing
       highlightColor: LuminaTokens.darkSurfaceSecondary,
       child: Column(
         children: [
-          Container(height: 240, color: Colors.white),
-          const SizedBox(height: LuminaTokens.spacingLg),
+          const SizedBox(height: 16),
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.all(LuminaTokens.spacingMd),
@@ -313,11 +401,4 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> with Sing
       ),
     );
   }
-}
-
-// Helper enum/class for layout matching
-enum Cover {
-  cover(BoxFit.cover);
-  final BoxFit fit;
-  const Cover(this.fit);
 }

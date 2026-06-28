@@ -5,7 +5,7 @@ import 'models.dart';
 
 part 'api_client.g.dart';
 
-@RestApi(baseUrl: "http://10.0.2.2:8000/api/v1") // Dev default targeting local machine via Android emulator
+@RestApi(baseUrl: "http://172.17.145.189:8000/api/v1") // Dev default targeting local machine via Wi-Fi network IP
 abstract class ApiClient {
   factory ApiClient(Dio dio, {String baseUrl}) = _ApiClient;
 
@@ -29,6 +29,9 @@ abstract class ApiClient {
   @POST("/auth/refresh")
   Future<RefreshTokenResponse> refreshToken(@Body() RefreshTokenRequest request);
 
+  @GET("/auth/me")
+  Future<Map<String, dynamic>> getCurrentUser();
+
   // ==========================================
   // Albums
   // ==========================================
@@ -41,6 +44,9 @@ abstract class ApiClient {
     @Path("album_id") String albumId,
     @Query("sharing_code") String? sharingCode,
   );
+
+  @POST("/albums/")
+  Future<AlbumDetailResponse> createAlbum(@Body() Map<String, dynamic> body);
 
   // ==========================================
   // Photos
@@ -87,4 +93,20 @@ abstract class ApiClient {
 
   @DELETE("/device-tokens/{token}")
   Future<void> unregisterDeviceToken(@Path("token") String token);
+
+  // ==========================================
+  // Uploads
+  // ==========================================
+
+  @POST("/uploads/albums/{album_id}/presign")
+  Future<Map<String, dynamic>> getPresignedUrl(
+    @Path("album_id") String albumId,
+    @Body() Map<String, dynamic> body,
+  );
+
+  @POST("/uploads/albums/{album_id}/notify_upload")
+  Future<Map<String, dynamic>> completeUpload(
+    @Path("album_id") String albumId,
+    @Body() Map<String, dynamic> body,
+  );
 }

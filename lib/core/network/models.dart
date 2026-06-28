@@ -166,6 +166,8 @@ class AlbumDetailResponse {
   final String? photographerName;
   @JsonKey(name: 'photo_count')
   final int photoCount;
+  @JsonKey(name: 'created_at')
+  final String? createdAt;
 
   AlbumDetailResponse({
     required this.id,
@@ -178,6 +180,7 @@ class AlbumDetailResponse {
     required this.passwordProtected,
     this.photographerName,
     required this.photoCount,
+    this.createdAt,
   });
 
   factory AlbumDetailResponse.fromJson(Map<String, dynamic> json) => _$AlbumDetailResponseFromJson(json);
@@ -204,6 +207,8 @@ class PhotoResponse {
   final String? watermarkedUrl;
   @JsonKey(name: 'original_url')
   final String? originalUrl;
+  @JsonKey(name: 'created_at')
+  final String? createdAt;
 
   PhotoResponse({
     required this.id,
@@ -214,6 +219,7 @@ class PhotoResponse {
     this.thumbnailLargeUrl,
     this.watermarkedUrl,
     this.originalUrl,
+    this.createdAt,
   });
 
   factory PhotoResponse.fromJson(Map<String, dynamic> json) => _$PhotoResponseFromJson(json);
@@ -274,6 +280,8 @@ class FaceSearchResponse {
   final String? thumbnailUrl;
   @JsonKey(name: 'person_name')
   final String? personName;
+  @JsonKey(name: 'photo_date')
+  final String? photoDate;
 
   FaceSearchResponse({
     required this.faceId,
@@ -281,6 +289,7 @@ class FaceSearchResponse {
     required this.similarityScore,
     this.thumbnailUrl,
     this.personName,
+    this.photoDate,
   });
 
   factory FaceSearchResponse.fromJson(Map<String, dynamic> json) => _$FaceSearchResponseFromJson(json);

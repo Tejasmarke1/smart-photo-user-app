@@ -100,6 +100,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
+  Future<void> updateProfile({String? name, String? email}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (name != null) await prefs.setString('user_name', name);
+    if (email != null) await prefs.setString('user_email', email);
+
+    state = state.copyWith(
+      userName: name ?? state.userName,
+      userEmail: email ?? state.userEmail,
+    );
+  }
+
   Future<void> logout() async {
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');

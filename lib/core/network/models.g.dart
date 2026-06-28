@@ -119,6 +119,7 @@ AlbumDetailResponse _$AlbumDetailResponseFromJson(Map<String, dynamic> json) => 
       passwordProtected: json['password_protected'] as bool,
       photographerName: json['photographer_name'] as String?,
       photoCount: json['photo_count'] as int,
+      createdAt: json['created_at'] as String?,
     );
 
 Map<String, dynamic> _$AlbumDetailResponseToJson(AlbumDetailResponse instance) => <String, dynamic>{
@@ -132,6 +133,7 @@ Map<String, dynamic> _$AlbumDetailResponseToJson(AlbumDetailResponse instance) =
       'password_protected': instance.passwordProtected,
       'photographer_name': instance.photographerName,
       'photo_count': instance.photoCount,
+      'created_at': instance.createdAt,
     };
 
 PhotoResponse _$PhotoResponseFromJson(Map<String, dynamic> json) => PhotoResponse(
@@ -143,6 +145,7 @@ PhotoResponse _$PhotoResponseFromJson(Map<String, dynamic> json) => PhotoRespons
       thumbnailLargeUrl: json['thumbnail_large_url'] as String?,
       watermarkedUrl: json['watermarked_url'] as String?,
       originalUrl: json['original_url'] as String?,
+      createdAt: json['created_at'] as String?,
     );
 
 Map<String, dynamic> _$PhotoResponseToJson(PhotoResponse instance) => <String, dynamic>{
@@ -154,6 +157,7 @@ Map<String, dynamic> _$PhotoResponseToJson(PhotoResponse instance) => <String, d
       'thumbnail_large_url': instance.thumbnailLargeUrl,
       'watermarked_url': instance.watermarkedUrl,
       'original_url': instance.originalUrl,
+      'created_at': instance.createdAt,
     };
 
 PhotoListResponse _$PhotoListResponseFromJson(Map<String, dynamic> json) => PhotoListResponse(
@@ -192,6 +196,7 @@ FaceSearchResponse _$FaceSearchResponseFromJson(Map<String, dynamic> json) => Fa
       similarityScore: (json['similarity_score'] as num).toDouble(),
       thumbnailUrl: json['thumbnail_url'] as String?,
       personName: json['person_name'] as String?,
+      photoDate: json['photo_date'] as String?,
     );
 
 Map<String, dynamic> _$FaceSearchResponseToJson(FaceSearchResponse instance) => <String, dynamic>{
@@ -200,6 +205,7 @@ Map<String, dynamic> _$FaceSearchResponseToJson(FaceSearchResponse instance) => 
       'similarity_score': instance.similarityScore,
       'thumbnail_url': instance.thumbnailUrl,
       'person_name': instance.personName,
+      'photo_date': instance.photoDate,
     };
 
 DeviceTokenRegisterRequest _$DeviceTokenRegisterRequestFromJson(Map<String, dynamic> json) => DeviceTokenRegisterRequest(
