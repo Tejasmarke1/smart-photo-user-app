@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
+import '../../core/config/app_config.dart';
 import '../../core/services/razorpay_service.dart';
 
 class PaymentsScreen extends ConsumerStatefulWidget {
@@ -76,7 +77,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       // Step 1: Request order_id from our backend payment creation endpoint
       // POST /payments/create-order
       final response = await dio.post(
-        "http://10.0.2.2:8000/api/v1/payments/create-order",
+        '${AppConfig.apiBaseUrl}/payments/create-order',
         data: {
           'amount_cents': plan['price_cents'],
           'currency': 'INR',
@@ -125,7 +126,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       // Step 3: Verify the transaction signature on our backend
       // POST /payments/verify
       final response = await dio.post(
-        "http://10.0.2.2:8000/api/v1/payments/verify",
+        '${AppConfig.apiBaseUrl}/payments/verify',
         data: {
           'razorpay_order_id': successResponse.orderId,
           'razorpay_payment_id': successResponse.paymentId,

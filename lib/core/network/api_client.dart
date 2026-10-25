@@ -3,13 +3,16 @@ import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
+import '../config/app_config.dart';
 import 'models.dart';
 
 part 'api_client.g.dart';
 
-@RestApi(baseUrl: "http://10.0.2.2:8000/api/v1") // Dev default targeting local machine via Wi-Fi network IP
+@RestApi()
 abstract class ApiClient {
-  factory ApiClient(Dio dio, {String baseUrl}) = _ApiClient;
+  /// Uses [AppConfig.apiBaseUrl] unless [baseUrl] is given.
+  factory ApiClient(Dio dio, {String? baseUrl}) =>
+      _ApiClient(dio, baseUrl: baseUrl ?? AppConfig.apiBaseUrl);
 
   // ==========================================
   // Authentication

@@ -8,6 +8,7 @@ import 'package:dio/dio.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
+import '../../core/config/app_config.dart';
 import '../../core/network/models.dart';
 
 class GroupSettingsScreen extends ConsumerStatefulWidget {
@@ -76,9 +77,10 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
 
     try {
       final authState = ref.read(authProvider);
-      final dio = Dio(BaseOptions(headers: {
-        'Authorization': 'Bearer ${authState.accessToken}',
-      }));
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        headers: {'Authorization': 'Bearer ${authState.accessToken}'},
+      ));
       
       // Call backend PATCH /albums/{id}
       await dio.patch(
@@ -157,9 +159,10 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
 
     try {
       final authState = ref.read(authProvider);
-      final dio = Dio(BaseOptions(headers: {
-        'Authorization': 'Bearer ${authState.accessToken}',
-      }));
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        headers: {'Authorization': 'Bearer ${authState.accessToken}'},
+      ));
       
       // Call backend DELETE /albums/{id}
       await dio.delete('/albums/${widget.albumId}');

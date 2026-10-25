@@ -11,6 +11,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
+import '../../core/config/app_config.dart';
 import '../../core/network/models.dart';
 
 class AlbumDetailScreen extends ConsumerStatefulWidget {
@@ -407,7 +408,7 @@ class _PeopleTabContentState extends ConsumerState<_PeopleTabContent> {
     try {
       final authState = ref.read(authProvider);
       final dio = Dio(BaseOptions(
-        baseUrl: 'http://172.17.145.189:8000/api/v1',
+        baseUrl: AppConfig.apiBaseUrl,
         headers: {'Authorization': 'Bearer ${authState.accessToken}'},
       ));
       final client = ApiClient(dio);

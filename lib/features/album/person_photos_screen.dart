@@ -9,6 +9,7 @@ import 'package:dio/dio.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
+import '../../core/config/app_config.dart';
 import '../../core/network/models.dart';
 
 class PersonPhotosScreen extends ConsumerStatefulWidget {
@@ -47,7 +48,7 @@ class _PersonPhotosScreenState extends ConsumerState<PersonPhotosScreen> {
     try {
       final authState = ref.read(authProvider);
       final dio = Dio(BaseOptions(
-        baseUrl: 'http://172.17.145.189:8000/api/v1',
+        baseUrl: AppConfig.apiBaseUrl,
         headers: {'Authorization': 'Bearer ${authState.accessToken}'},
       ));
       final apiClient = ApiClient(dio);
@@ -281,7 +282,7 @@ class _PersonPhotosScreenState extends ConsumerState<PersonPhotosScreen> {
                 try {
                   final authState = ref.read(authProvider);
                   final dio = Dio(BaseOptions(
-                    baseUrl: 'http://172.17.145.189:8000/api/v1',
+                    baseUrl: AppConfig.apiBaseUrl,
                     headers: {'Authorization': 'Bearer ${authState.accessToken}'},
                   ));
                   await dio.patch('/persons/${widget.personId}', data: {'name': newName});
