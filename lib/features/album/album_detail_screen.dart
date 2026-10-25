@@ -11,6 +11,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
+import '../../core/config/app_config.dart';
 import '../../core/network/models.dart';
 
 class AlbumDetailScreen extends ConsumerStatefulWidget {
@@ -345,32 +346,7 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> with Sing
   }
 
   Widget _buildPeopleTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.people_alt_rounded, size: 48, color: LuminaTokens.darkTextMuted),
-          const SizedBox(height: LuminaTokens.spacingMd),
-          Text(
-            "Face Clusters is ready",
-            style: GoogleFonts.outfit(
-              fontSize: LuminaTokens.textLg,
-              fontWeight: LuminaTokens.fontWeightBold,
-              color: LuminaTokens.darkText,
-            ),
-          ),
-          const SizedBox(height: LuminaTokens.spacingXxs),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: LuminaTokens.spacingXl),
-            child: Text(
-              "Perform a selfie search using the button below to group all matches of your face.",
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
+    return _PeopleTabContent(albumId: widget.id);
   }
 
   Widget _buildLoadingShimmer() {
@@ -395,6 +371,259 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> with Sing
                   borderRadius: LuminaTokens.borderRadiusMd,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ==========================================
+// People Tab - Dynamic Face Clusters
+// ==========================================
+
+class _PeopleTabContent extends ConsumerStatefulWidget {
+  final String albumId;
+
+  const _PeopleTabContent({required this.albumId});
+
+  @override
+  ConsumerState<_PeopleTabContent> createState() => _PeopleTabContentState();
+}
+
+class _PeopleTabContentState extends ConsumerState<_PeopleTabContent> {
+  bool _isLoading = true;
+  List<PersonResponse> _persons = [];
+  final Map<String, String?> _thumbnailUrls = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersons();
+  }
+
+  Future<void> _loadPersons() async {
+    setState(() => _isLoading = true);
+    try {
+      final authState = ref.read(authProvider);
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        headers: {'Authorization': 'Bearer ${authState.accessToken}'},
+      ));
+      final client = ApiClient(dio);
+
+      final result = await client.listPersons(widget.albumId, 0, 50);
+      if (mounted) {
+        setState(() {
+          _persons = result.persons;
+          _isLoading = false;
+        });
+      }
+
+      // Load thumbnails in parallel
+      for (final person in result.persons) {
+        try {
+          final thumb = await client.getPersonThumbnail(person.id, 'small');
+          if (mounted) {
+            setState(() {
+              _thumbnailUrls[person.id] = thumb.thumbnailUrl;
+            });
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return _buildLoadingState();
+    }
+
+    if (_persons.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadPersons,
+      color: LuminaTokens.primaryLight,
+      child: GridView.builder(
+        padding: const EdgeInsets.all(LuminaTokens.spacingMd),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 20,
+          childAspectRatio: 0.75,
+        ),
+        itemCount: _persons.length,
+        itemBuilder: (context, index) {
+          final person = _persons[index];
+          final thumbUrl = _thumbnailUrls[person.id];
+
+          return GestureDetector(
+            onTap: () {
+              context.push('/person-photos/${person.id}', extra: {
+                'personName': person.name ?? 'Person ${index + 1}',
+              });
+            },
+            child: Column(
+              children: [
+                Stack(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LuminaTokens.primaryGradient,
+                        border: Border.all(
+                          color: LuminaTokens.darkBorder.withOpacity(0.5),
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: thumbUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: thumbUrl,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => _buildPlaceholderAvatar(index),
+                              )
+                            : _buildPlaceholderAvatar(index),
+                      ),
+                    ),
+                    // Face count badge
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E6091),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: LuminaTokens.darkBg, width: 1.5),
+                        ),
+                        child: Text(
+                          '${person.faceCount}',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  person.name ?? 'Person ${index + 1}',
+                  style: GoogleFonts.outfit(
+                    fontSize: LuminaTokens.textSm,
+                    fontWeight: LuminaTokens.fontWeightMedium,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderAvatar(int index) {
+    final colors = [
+      LuminaTokens.primaryLight,
+      LuminaTokens.secondaryLight,
+      LuminaTokens.accentLight,
+      const Color(0xFF38BDF8),
+      LuminaTokens.successLight,
+    ];
+    return Container(
+      color: colors[index % colors.length].withOpacity(0.3),
+      child: Icon(
+        Icons.person_rounded,
+        size: 36,
+        color: colors[index % colors.length],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(LuminaTokens.spacingMd),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 20,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: 9,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: LuminaTokens.darkSurface,
+          highlightColor: LuminaTokens.darkSurfaceSecondary,
+          child: Column(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: 50,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.people_alt_rounded, size: 56, color: LuminaTokens.darkTextMuted.withOpacity(0.4)),
+          const SizedBox(height: LuminaTokens.spacingMd),
+          Text(
+            'No face clusters found',
+            style: GoogleFonts.outfit(
+              fontSize: LuminaTokens.textLg,
+              fontWeight: LuminaTokens.fontWeightBold,
+              color: LuminaTokens.darkText,
+            ),
+          ),
+          const SizedBox(height: LuminaTokens.spacingXxs),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: LuminaTokens.spacingXl),
+            child: Text(
+              'Upload photos and faces will be automatically detected and grouped.',
+              style: GoogleFonts.inter(
+                color: LuminaTokens.darkTextMuted,
+                fontSize: LuminaTokens.textSm,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ],

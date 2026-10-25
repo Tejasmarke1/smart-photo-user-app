@@ -29,6 +29,20 @@ class RazorpayService {
     required String description,
     required Map<String, dynamic> themeColors,
   }) {
+    if (orderId.startsWith('order_dummy_')) {
+      // Simulate mock checkout flow in local development dev mode
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        final mockResponse = PaymentSuccessResponse(
+          'pay_dummy_${DateTime.now().millisecondsSinceEpoch}',
+          orderId,
+          'sig_dummy_${DateTime.now().millisecondsSinceEpoch}',
+          {},
+        );
+        _handlePaymentSuccess(mockResponse);
+      });
+      return;
+    }
+
     var options = {
       'key': apiKey,
       'amount': amountCents, // Amount in currency subunits (e.g., paise)

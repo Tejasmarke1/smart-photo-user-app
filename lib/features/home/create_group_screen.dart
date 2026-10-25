@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,6 +87,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
         current.insert(0, album.id);
         await prefs.setStringList('recent_albums', current);
       }
+
+      // Save sharing code for this album ID to resolve it on home screen
+      final codesJson = prefs.getString('album_sharing_codes') ?? '{}';
+      final Map<String, dynamic> codesMap = jsonDecode(codesJson);
+      codesMap[album.id] = album.sharingCode;
+      await prefs.setString('album_sharing_codes', jsonEncode(codesMap));
 
       _showSnackBar("Group created successfully!", isError: false);
       

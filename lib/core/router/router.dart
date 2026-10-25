@@ -18,6 +18,16 @@ import '../../features/search/selfie_search_screen.dart';
 import '../../features/photo/photo_viewer_screen.dart';
 import '../../features/payments/payments_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/settings/subscription_screen.dart';
+import '../../features/settings/close_friends_screen.dart';
+import '../../features/settings/auto_downloads_screen.dart';
+import '../../features/settings/app_settings_screen.dart';
+import '../../features/settings/face_data_management_screen.dart';
+import '../../features/settings/download_permissions_screen.dart';
+import '../../features/settings/blocked_users_screen.dart';
+import '../../features/settings/faq_screen.dart';
+import '../../features/settings/support_screen.dart';
+import '../../features/album/person_photos_screen.dart';
 import '../network/models.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -147,6 +157,57 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/subscription',
+        builder: (context, state) => const SubscriptionScreen(),
+      ),
+      GoRoute(
+        path: '/close-friends',
+        builder: (context, state) => const CloseFriendsScreen(),
+      ),
+      GoRoute(
+        path: '/auto-downloads',
+        builder: (context, state) => const AutoDownloadsScreen(),
+      ),
+      GoRoute(
+        path: '/app-settings',
+        builder: (context, state) => const AppSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/face-data-management',
+        builder: (context, state) => const FaceDataManagementScreen(),
+      ),
+      GoRoute(
+        path: '/download-permissions',
+        builder: (context, state) => const DownloadPermissionsScreen(),
+      ),
+      GoRoute(
+        path: '/blocked-users',
+        builder: (context, state) => const BlockedUsersScreen(),
+      ),
+      GoRoute(
+        path: '/faq',
+        builder: (context, state) => const FAQScreen(),
+      ),
+      GoRoute(
+        path: '/contact-support',
+        builder: (context, state) => const SupportScreen(isReportProblem: false),
+      ),
+      GoRoute(
+        path: '/report-problem',
+        builder: (context, state) => const SupportScreen(isReportProblem: true),
+      ),
+      GoRoute(
+        path: '/person-photos/:id',
+        builder: (context, state) {
+          final personId = state.pathParameters['id']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          return PersonPhotosScreen(
+            personId: personId,
+            personName: extra?['personName'] as String?,
+          );
+        },
       ),
     ],
     // Redirect guard: protect routes from unauthenticated access (mandatory signup requirement)

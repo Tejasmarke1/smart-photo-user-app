@@ -1,13 +1,18 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import '../config/app_config.dart';
 import 'models.dart';
 
 part 'api_client.g.dart';
 
-@RestApi(baseUrl: "http://172.17.145.189:8000/api/v1") // Dev default targeting local machine via Wi-Fi network IP
+@RestApi()
 abstract class ApiClient {
-  factory ApiClient(Dio dio, {String baseUrl}) = _ApiClient;
+  /// Uses [AppConfig.apiBaseUrl] unless [baseUrl] is given.
+  factory ApiClient(Dio dio, {String? baseUrl}) =>
+      _ApiClient(dio, baseUrl: baseUrl ?? AppConfig.apiBaseUrl);
 
   // ==========================================
   // Authentication
@@ -24,13 +29,13 @@ abstract class ApiClient {
 
   @POST("/auth/profile-picture")
   @MultiPart()
-  Future<Map<String, dynamic>> uploadProfilePicture(@Part(name: "file") File file);
+  Future<dynamic> uploadProfilePicture(@Part(name: "file") File file);
 
   @POST("/auth/refresh")
   Future<RefreshTokenResponse> refreshToken(@Body() RefreshTokenRequest request);
 
   @GET("/auth/me")
-  Future<Map<String, dynamic>> getCurrentUser();
+  Future<dynamic> getCurrentUser();
 
   // ==========================================
   // Albums
@@ -82,7 +87,7 @@ abstract class ApiClient {
 
   @POST("/faces/detect-live")
   @MultiPart()
-  Future<Map<String, dynamic>> detectLiveFace(@Part(name: "file") File file);
+  Future<dynamic> detectLiveFace(@Part(name: "file") File file);
 
   // ==========================================
   // Device tokens for push notifications
@@ -99,14 +104,75 @@ abstract class ApiClient {
   // ==========================================
 
   @POST("/uploads/albums/{album_id}/presign")
-  Future<Map<String, dynamic>> getPresignedUrl(
+  Future<dynamic> getPresignedUrl(
     @Path("album_id") String albumId,
     @Body() Map<String, dynamic> body,
   );
 
   @POST("/uploads/albums/{album_id}/notify_upload")
-  Future<Map<String, dynamic>> completeUpload(
+  Future<dynamic> completeUpload(
     @Path("album_id") String albumId,
     @Body() Map<String, dynamic> body,
   );
+
+  // ==========================================
+  // Additional profile & person endpoints
+  // ==========================================
+
+  @PATCH("/auth/me")
+  Future<UserResponse> updateProfile(@Body() UserUpdateRequest request);
+
+  @GET("/persons")
+  Future<PersonListResponse> listPersons(
+    @Query("album_id") String? albumId,
+    @Query("skip") int skip,
+    @Query("limit") int limit,
+  );
+
+  @GET("/persons/{person_id}/thumbnail")
+  Future<PersonThumbnailResponse> getPersonThumbnail(
+    @Path("person_id") String personId,
+    @Query("size") String size,
+  );
+
+  @GET("/persons/{person_id}/photos")
+  Future<PersonWithPhotosResponse> getPersonPhotos(
+    @Path("person_id") String personId,
+    @Query("skip") int skip,
+    @Query("limit") int limit,
+  );
+
+  // ==========================================
+  // Billing & Payments
+  // ==========================================
+
+  @GET("/payments/plans")
+  Future<List<PlanResponse>> getPlans(@Query("role") String role);
+
+  @POST("/payments/apply-coupon")
+  Future<ApplyCouponResponse> applyCoupon(@Body() ApplyCouponRequest request);
+
+  @POST("/payments/create-order")
+  Future<CreateOrderResponse> createOrder(@Body() CreateOrderRequest request);
+
+  @POST("/payments/verify")
+  Future<VerifyPaymentResponse> verifyPayment(@Body() VerifyPaymentRequest request);
+
+  @GET("/payments/usage")
+  Future<ResourceUsageResponse> getResourceUsage();
+
+  @POST("/payments/subscriptions/cancel")
+  Future<SubscriptionResponse> cancelSubscription();
+
+  @POST("/payments/subscriptions/reactivate")
+  Future<SubscriptionResponse> reactivateSubscription();
 }
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final authState = ref.watch(authProvider);
+  final dio = Dio();
+  if (authState.isAuthenticated && authState.accessToken != null) {
+    dio.options.headers['Authorization'] = 'Bearer ${authState.accessToken}';
+  }
+  return ApiClient(dio);
+});

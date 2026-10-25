@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
+import '../../core/config/app_config.dart';
 import '../../core/services/razorpay_service.dart';
 
 class PaymentsScreen extends ConsumerStatefulWidget {
@@ -74,23 +75,25 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       }));
       
       // Step 1: Request order_id from our backend payment creation endpoint
-      // POST /payments/orders/create
+      // POST /payments/create-order
       final response = await dio.post(
-        "http://10.0.2.2:8000/api/v1/payments/orders/create",
+        '${AppConfig.apiBaseUrl}/payments/create-order',
         data: {
-          'plan_id': plan['id'],
           'amount_cents': plan['price_cents'],
           'currency': 'INR',
+          'payment_type': 'subscription',
+          'reference_type': 'subscription',
+          'reference_id': plan['id'],
         },
       );
 
       final orderData = response.data;
-      final orderId = orderData['order_id'];
-      final keyId = orderData['key_id'];
+      final orderId = orderData['razorpay_order_id'];
+      final keyId = orderData['razorpay_key_id'];
 
       // Step 2: Launch Native Razorpay Checkout SDK
       _razorpayService.openCheckout(
-        apiKey: keyId,
+        apiKey: keyId as String? ?? 'rzp_test_1DP5mmOlF5G5ag',
         orderId: orderId,
         amountCents: plan['price_cents'],
         name: authState.userName ?? "Guest User",
@@ -123,7 +126,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       // Step 3: Verify the transaction signature on our backend
       // POST /payments/verify
       final response = await dio.post(
-        "http://10.0.2.2:8000/api/v1/payments/verify",
+        '${AppConfig.apiBaseUrl}/payments/verify',
         data: {
           'razorpay_order_id': successResponse.orderId,
           'razorpay_payment_id': successResponse.paymentId,
