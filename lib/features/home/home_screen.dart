@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -155,24 +157,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }));
       final client = ApiClient(dio);
       
-      final futures = _recentAlbums.map((id) => client.getAlbumDetail(id, null).catchError((e) {
-        debugPrint("Failed to load album $id: $e");
-        if (e is DioException && e.response?.statusCode == 401) {
-          ref.read(authProvider.notifier).logout().then((_) {
-            if (mounted) {
-              context.go('/login');
-            }
-          });
-        }
-        return AlbumDetailResponse(
-          id: id,
-          title: "Unknown Album",
-          sharingCode: "",
-          isPublic: false,
-          passwordProtected: false,
-          photoCount: 0,
-        );
-      }));
+      // Load album sharing codes to authorize guest access
+      final prefs = await SharedPreferences.getInstance();
+      final codesJson = prefs.getString('album_sharing_codes') ?? '{}';
+      final Map<String, dynamic> codesMap = jsonDecode(codesJson);
+      
+      final futures = _recentAlbums.map((id) {
+        final sharingCode = codesMap[id]?.toString();
+        return client.getAlbumDetail(id, sharingCode).catchError((e) {
+          debugPrint("Failed to load album $id: $e");
+          if (e is DioException && e.response?.statusCode == 401) {
+            ref.read(authProvider.notifier).logout().then((_) {
+              if (mounted) {
+                context.go('/login');
+              }
+            });
+          }
+          return AlbumDetailResponse(
+            id: id,
+            title: "Unknown Album",
+            sharingCode: sharingCode ?? "",
+            isPublic: false,
+            passwordProtected: false,
+            photoCount: 0,
+          );
+        });
+      });
       
       final results = await Future.wait(futures);
       
@@ -287,6 +297,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return groups;
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (previous, next) {
@@ -305,8 +322,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             Expanded(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: _currentNavIndex == 0 ? _buildHomeTab() : _buildMyPhotosTab(),
+                duration: const Duration(milliseconds: 300),
+                child: SizedBox.expand(
+                  key: ValueKey(_currentNavIndex),
+                  child: _currentNavIndex == 0 ? _buildHomeTab() : _buildMyPhotosTab(),
+                ),
               ),
             ),
 
@@ -329,31 +349,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: LuminaTokens.primary.withOpacity(0.1),
-                backgroundImage: _profilePicUrl != null
-                    ? NetworkImage(_profilePicUrl!)
-                    : null,
-                child: _profilePicUrl == null
-                    ? const Icon(Icons.person_rounded, color: LuminaTokens.primaryLight)
-                    : null,
+              Container(
+                padding: const EdgeInsets.all(1.5),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: LuminaTokens.darkBorder,
+                ),
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: LuminaTokens.darkSurface,
+                  backgroundImage: _profilePicUrl != null
+                      ? NetworkImage(_profilePicUrl!)
+                      : null,
+                  child: _profilePicUrl == null
+                      ? const Icon(Icons.person_rounded, color: LuminaTokens.primaryLight, size: 20)
+                      : null,
+                ),
               ),
               const SizedBox(width: LuminaTokens.spacingSm),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Hello,",
+                    _getGreeting(),
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: LuminaTokens.darkTextMuted,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
                     authState.userName ?? 'Lumina Guest',
                     style: GoogleFonts.outfit(
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: LuminaTokens.darkText,
                     ),
@@ -368,8 +396,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             style: IconButton.styleFrom(
               backgroundColor: LuminaTokens.darkSurface,
               padding: const EdgeInsets.all(10),
+              side: BorderSide(color: LuminaTokens.darkBorder.withOpacity(0.5), width: 1),
               shadowColor: Colors.black.withOpacity(0.2),
-              elevation: 4,
+              elevation: 2,
             ),
           ),
         ],
@@ -389,13 +418,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           
           const SizedBox(height: LuminaTokens.spacingLg),
 
-          Text(
-            "Joined Groups",
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: LuminaTokens.darkText,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Joined Groups",
+                style: GoogleFonts.outfit(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: LuminaTokens.darkText,
+                ),
+              ),
+              if (_resolvedAlbums.isNotEmpty)
+                Text(
+                  "${_resolvedAlbums.length} active",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: LuminaTokens.primaryLight,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: LuminaTokens.spacingMd),
 
@@ -407,23 +450,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             )
           else if (_resolvedAlbums.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(LuminaTokens.spacingLg),
-              decoration: BoxDecoration(
-                color: LuminaTokens.darkSurface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: LuminaTokens.darkBorder.withOpacity(0.1)),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                "No groups joined yet.",
-                style: GoogleFonts.inter(
-                  color: LuminaTokens.darkTextMuted,
-                  fontSize: 14,
-                ),
-              ),
-            )
+            _buildEmptyState()
           else
             ListView.builder(
               shrinkWrap: true,
@@ -431,7 +458,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               itemCount: _resolvedAlbums.length,
               itemBuilder: (context, index) {
                 final album = _resolvedAlbums[index];
-                return _buildGroupCard(album).animate().fade(delay: (index * 50).ms);
+                return _buildGroupCard(album).animate().fade(delay: (index * 50).ms).slideY(begin: 0.1, duration: 300.ms, curve: Curves.easeOut);
               },
             ),
           const SizedBox(height: 24),
@@ -440,11 +467,74 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+      decoration: BoxDecoration(
+        color: LuminaTokens.darkSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: LuminaTokens.darkBorder.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: LuminaTokens.darkSurfaceSecondary,
+              border: Border.all(color: LuminaTokens.darkBorder.withOpacity(0.3)),
+            ),
+            child: Icon(
+              Icons.collections_bookmark_rounded, 
+              color: LuminaTokens.primaryLight.withOpacity(0.7), 
+              size: 36,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            "Ready for your first event?",
+            style: GoogleFonts.outfit(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Join an existing event group with a code or create your own to start sharing memories.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: LuminaTokens.darkTextMuted,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () => context.push('/join-group').then((_) => _loadAndResolveAlbums()),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text("Join Group Now", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              backgroundColor: LuminaTokens.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fade(duration: 300.ms);
+  }
+
   Widget _buildActionCards() {
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Join Group Card
           Expanded(
             child: GestureDetector(
               onTap: () => context.push('/join-group').then((_) => _loadAndResolveAlbums()),
@@ -453,12 +543,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 decoration: BoxDecoration(
                   color: LuminaTokens.darkSurface,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: LuminaTokens.darkBorder.withOpacity(0.2)),
+                  border: Border.all(color: LuminaTokens.darkBorder.withOpacity(0.3), width: 1.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
                       offset: const Offset(0, 4),
-                      blurRadius: 10,
                     ),
                   ],
                 ),
@@ -468,10 +558,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2E6B9E).withOpacity(0.15),
+                        color: LuminaTokens.primaryLight.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.group_add_rounded, color: Color(0xFF2E6B9E), size: 24),
+                      child: const Icon(
+                        Icons.group_add_rounded, 
+                        color: LuminaTokens.primaryLight, 
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -480,6 +574,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         color: LuminaTokens.darkText,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        letterSpacing: 0.1,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -488,14 +583,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       style: GoogleFonts.inter(
                         color: LuminaTokens.darkTextMuted,
                         fontSize: 11,
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
+          ).animate().slideY(begin: 0.1, duration: 300.ms, curve: Curves.easeOutCubic).fade(duration: 300.ms),
+          
           const SizedBox(width: 16),
+          
+          // Create Group Card
           Expanded(
             child: GestureDetector(
               onTap: () => context.push('/create-group').then((_) => _loadAndResolveAlbums()),
@@ -504,12 +603,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 decoration: BoxDecoration(
                   color: LuminaTokens.darkSurface,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: LuminaTokens.darkBorder.withOpacity(0.2)),
+                  border: Border.all(color: LuminaTokens.darkBorder.withOpacity(0.3), width: 1.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
                       offset: const Offset(0, 4),
-                      blurRadius: 10,
                     ),
                   ],
                 ),
@@ -519,10 +618,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: LuminaTokens.primaryLight.withOpacity(0.15),
+                        color: LuminaTokens.secondary.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.add_box_rounded, color: LuminaTokens.primaryLight, size: 24),
+                      child: const Icon(
+                        Icons.add_box_rounded, 
+                        color: LuminaTokens.secondaryLight, 
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -531,6 +634,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         color: LuminaTokens.darkText,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        letterSpacing: 0.1,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -539,13 +643,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       style: GoogleFonts.inter(
                         color: LuminaTokens.darkTextMuted,
                         fontSize: 11,
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
+          ).animate().slideY(begin: 0.1, delay: 80.ms, duration: 300.ms, curve: Curves.easeOutCubic).fade(duration: 300.ms),
         ],
       ),
     );
@@ -558,40 +663,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         : "Joined on ${_formatDate(album.createdAt)}";
 
     return Container(
-      margin: const EdgeInsets.only(bottom: LuminaTokens.spacingSm),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: LuminaTokens.darkSurface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: LuminaTokens.darkBorder.withOpacity(0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            offset: const Offset(0, 4),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           onTap: () => context.push('/album/${album.id}', extra: album.sharingCode),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Container(
-                  width: 54,
-                  height: 54,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: LuminaTokens.primaryLight,
-                      width: 2.0,
+                      color: LuminaTokens.primaryLight.withOpacity(0.5),
+                      width: 1.5,
                     ),
                   ),
                   child: ClipOval(
@@ -612,6 +717,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       Text(
                         album.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
                           color: LuminaTokens.darkText,
                           fontWeight: FontWeight.bold,
@@ -621,6 +728,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: 4),
                       Text(
                         subtitleText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           color: LuminaTokens.darkTextMuted,
                           fontSize: 12,
@@ -629,23 +738,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
                 
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      timeAgo,
-                      style: GoogleFonts.inter(
-                        color: LuminaTokens.darkTextMuted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: album.photoCount > 0 
+                            ? LuminaTokens.primaryLight.withOpacity(0.12)
+                            : LuminaTokens.darkSurfaceSecondary,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: album.photoCount > 0 
+                              ? LuminaTokens.primaryLight.withOpacity(0.2)
+                              : LuminaTokens.darkBorder.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        album.photoCount > 0 ? "${album.photoCount} photos" : "Empty",
+                        style: GoogleFonts.inter(
+                          color: album.photoCount > 0 ? LuminaTokens.primaryLight : LuminaTokens.darkTextMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: LuminaTokens.primaryLight,
-                      size: 20,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          timeAgo,
+                          style: GoogleFonts.inter(
+                            color: LuminaTokens.darkTextMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: LuminaTokens.primaryLight,
+                          size: 16,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -944,34 +1079,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildBottomNavigationBar() {
     return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: LuminaTokens.spacingLg,
-        vertical: LuminaTokens.spacingSm,
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       decoration: BoxDecoration(
         color: LuminaTokens.darkSurface,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: LuminaTokens.darkBorder.withOpacity(0.3),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            offset: const Offset(0, 4),
-            blurRadius: 16,
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
-        border: Border.all(color: LuminaTokens.darkBorder.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildNavItem(0, Icons.home_rounded, Icons.home_outlined),
-          _buildNavItem(1, Icons.photo_library_rounded, Icons.photo_library_outlined),
+          _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, "Home"),
+          _buildNavItem(1, Icons.photo_library_rounded, Icons.photo_library_outlined, "Gallery"),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon) {
+  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final isSelected = _currentNavIndex == index;
     return GestureDetector(
       onTap: () {
@@ -980,13 +1115,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _fetchUserProfile();
         }
       },
-      child: Container(
-        color: Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-        child: Icon(
-          isSelected ? activeIcon : inactiveIcon,
-          color: isSelected ? LuminaTokens.primaryLight : LuminaTokens.darkTextMuted,
-          size: 28,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? LuminaTokens.primary.withOpacity(0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected 
+                ? LuminaTokens.primaryLight.withOpacity(0.2)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? activeIcon : inactiveIcon,
+              color: isSelected ? LuminaTokens.primaryLight : LuminaTokens.darkTextMuted,
+              size: 22,
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

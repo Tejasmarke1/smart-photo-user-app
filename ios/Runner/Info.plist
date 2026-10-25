@@ -66,5 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSContactsUsageDescription</key>
+	<string>This app requires contacts access to suggest and invite close friends to your albums.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires photo library access to upload and download photos to your gallery.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app requires permission to save photos to your photo library.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires camera access to take profile selfies and scan QR codes.</string>
 </dict>
 </plist>

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -121,6 +122,14 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
     list.remove(widget.albumId);
     await prefs.setStringList('recent_albums', list);
     
+    // Clean up sharing code map
+    final codesJson = prefs.getString('album_sharing_codes') ?? '{}';
+    try {
+      final Map<String, dynamic> codesMap = jsonDecode(codesJson);
+      codesMap.remove(widget.albumId);
+      await prefs.setString('album_sharing_codes', jsonEncode(codesMap));
+    } catch (_) {}
+    
     if (mounted) {
       context.go('/home');
     }
@@ -159,6 +168,14 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
       final list = prefs.getStringList('recent_albums') ?? [];
       list.remove(widget.albumId);
       await prefs.setStringList('recent_albums', list);
+
+      // Clean up sharing code map
+      final codesJson = prefs.getString('album_sharing_codes') ?? '{}';
+      try {
+        final Map<String, dynamic> codesMap = jsonDecode(codesJson);
+        codesMap.remove(widget.albumId);
+        await prefs.setString('album_sharing_codes', jsonEncode(codesMap));
+      } catch (_) {}
 
       if (mounted) {
         context.go('/home');

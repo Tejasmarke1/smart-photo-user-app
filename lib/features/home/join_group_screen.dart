@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -61,6 +62,12 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
         current.insert(0, album.id);
         await prefs.setStringList('recent_albums', current);
       }
+
+      // Save sharing code for this album ID to resolve it on home screen
+      final codesJson = prefs.getString('album_sharing_codes') ?? '{}';
+      final Map<String, dynamic> codesMap = jsonDecode(codesJson);
+      codesMap[album.id] = code.trim();
+      await prefs.setString('album_sharing_codes', jsonEncode(codesMap));
 
       _showSnackBar("Successfully joined group!", isError: false);
       
