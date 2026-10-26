@@ -11,6 +11,14 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/models.dart';
 
+/// File name from the server reduced to a plain basename, so it can't write
+/// outside the downloads folder.
+String safeDownloadName(String name) {
+  final base = name.replaceAll('\\', '/').split('/').last.replaceAll(RegExp(r'[\x00-\x1f]'), '').trim();
+  final cleaned = base.replaceFirst(RegExp(r'^\.+'), '');
+  return cleaned.isEmpty ? 'download' : cleaned;
+}
+
 class PhotoViewerScreen extends ConsumerStatefulWidget {
   final PhotoResponse photo;
   final String? sharingCode;
@@ -61,11 +69,12 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
         },
       );
 
-      // Now download the actual file from S3 using Dio
+      // Download from the presigned URL with a plain client: S3/MinIO reject a
+      // request that also carries our Authorization header (two auth methods).
       final directory = await _getDownloadDirectory();
-      final filePath = "${directory.path}/${response.filename}";
-      
-      await dio.download(response.downloadUrl, filePath);
+      final filePath = "${directory.path}/${safeDownloadName(response.filename)}";
+
+      await Dio().download(response.downloadUrl, filePath);
 
       _showSnackBar("Photo downloaded to: $filePath", isError: false);
     } catch (e) {
