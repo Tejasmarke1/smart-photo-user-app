@@ -27,9 +27,14 @@ abstract class ApiClient {
   @POST("/auth/signup")
   Future<SignupResponse> signup(@Body() SignupRequest request);
 
+  /// Signed-in callers authenticate with the Dio bearer token; during signup,
+  /// pass the temp token from verify-otp as [signupToken].
   @POST("/auth/profile-picture")
   @MultiPart()
-  Future<dynamic> uploadProfilePicture(@Part(name: "file") File file);
+  Future<dynamic> uploadProfilePicture(
+    @Part(name: "file") File file, {
+    @Header("X-Signup-Token") String? signupToken,
+  });
 
   @POST("/auth/refresh")
   Future<RefreshTokenResponse> refreshToken(@Body() RefreshTokenRequest request);

@@ -102,10 +102,12 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<dynamic> uploadProfilePicture(File file) async {
+  Future<dynamic> uploadProfilePicture(File file, {String? signupToken}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{r'X-Signup-Token': signupToken};
+    _headers.removeWhere((k, v) => v == null);
     final _data = FormData();
     _data.files.add(
       MapEntry(

@@ -78,8 +78,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       final dio = Dio();
       final client = ApiClient(dio);
       
-      // Step 1: Upload captured profile photo to receive S3 public URL
-      final uploadResponse = await client.uploadProfilePicture(_capturedPhoto!);
+      // Step 1: Upload the selfie (private; authorised by the signup token)
+      final uploadResponse = await client.uploadProfilePicture(
+        _capturedPhoto!,
+        signupToken: widget.tempToken,
+      );
       final profilePicUrl = uploadResponse['url']?.toString();
 
       if (profilePicUrl == null) {
