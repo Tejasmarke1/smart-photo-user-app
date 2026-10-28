@@ -42,6 +42,16 @@ abstract class ApiClient {
   @GET("/auth/me")
   Future<dynamic> getCurrentUser();
 
+  /// Permanently deletes the caller's face data (selfie images, labels/embeddings linked to
+  /// them, search history). [body] must be `{"confirm": "DELETE"}`.
+  @DELETE("/auth/me/face-data")
+  Future<FaceDataDeletionResponse> deleteFaceData(@Body() Map<String, dynamic> body);
+
+  /// Permanently deletes the account. [body] is `{"confirm": "DELETE", "delete_owned_albums": bool}`;
+  /// the server answers 409 `OWNS_ALBUMS` if albums exist and `delete_owned_albums` is false.
+  @DELETE("/auth/me")
+  Future<AccountDeletionResponse> deleteAccount(@Body() Map<String, dynamic> body);
+
   // ==========================================
   // Albums
   // ==========================================

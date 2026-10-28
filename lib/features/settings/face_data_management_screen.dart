@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/network/api_client.dart';
+import '../../core/network/api_error.dart';
 import '../../core/theme/tokens.dart';
 
-class FaceDataManagementScreen extends StatefulWidget {
+class FaceDataManagementScreen extends ConsumerStatefulWidget {
   const FaceDataManagementScreen({super.key});
 
   @override
-  State<FaceDataManagementScreen> createState() => _FaceDataManagementScreenState();
+  ConsumerState<FaceDataManagementScreen> createState() => _FaceDataManagementScreenState();
 }
 
-class _FaceDataManagementScreenState extends State<FaceDataManagementScreen> {
+class _FaceDataManagementScreenState extends ConsumerState<FaceDataManagementScreen> {
   bool _isLoading = true;
   bool _optOutOfFaceMatching = false;
   bool _isDeleting = false;
@@ -45,7 +48,7 @@ class _FaceDataManagementScreenState extends State<FaceDataManagementScreen> {
           style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'This will permanently delete your face vector signature from our face recognition server. You will no longer be matched in photos unless you register a new selfie.',
+          'This permanently deletes your selfie images, the names and face data linked to your email or phone in albums, and your search history. The photos themselves stay in their albums. Face matching stops until you agree to it again.',
           style: GoogleFonts.inter(color: LuminaTokens.darkTextMuted, fontSize: 13, height: 1.4),
         ),
         actions: [
@@ -68,14 +71,20 @@ class _FaceDataManagementScreenState extends State<FaceDataManagementScreen> {
       _isDeleting = true;
     });
 
-    // Simulate API call to delete face signatures
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isDeleting = false;
-    });
-
-    _showSnackBar('Face signature data deleted successfully.');
+    try {
+      final result = await ref.read(apiClientProvider).deleteFaceData({'confirm': 'DELETE'});
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      _showSnackBar(
+        'Face data deleted: ${result.selfieObjectsDeleted} selfie image(s), '
+        '${result.personsRemoved} label(s) and ${result.facesRemoved} face(s) removed.',
+      );
+    } catch (error) {
+      // Never claim success when the server did not confirm the deletion
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      _showSnackBar(parseApiError(error, fallback: 'Could not delete your face data. Please try again.').message);
+    }
   }
 
   void _showSnackBar(String msg) {

@@ -581,3 +581,53 @@ Map<String, dynamic> _$SubscriptionResponseToJson(
       'auto_renew': instance.autoRenew,
       'cancelled_at': instance.cancelledAt,
     };
+
+FaceDataDeletionResponse _$FaceDataDeletionResponseFromJson(
+        Map<String, dynamic> json) =>
+    FaceDataDeletionResponse(
+      selfieObjectsDeleted: (json['selfie_objects_deleted'] as num).toInt(),
+      personsRemoved: (json['persons_removed'] as num).toInt(),
+      facesRemoved: (json['faces_removed'] as num).toInt(),
+      faceCropsDeleted: (json['face_crops_deleted'] as num).toInt(),
+      searchHistoryDeleted: (json['search_history_deleted'] as num).toInt(),
+      consentsRevoked: (json['consents_revoked'] as num).toInt(),
+      deletedAt: json['deleted_at'] as String,
+    );
+
+Map<String, dynamic> _$FaceDataDeletionResponseToJson(
+        FaceDataDeletionResponse instance) =>
+    <String, dynamic>{
+      'selfie_objects_deleted': instance.selfieObjectsDeleted,
+      'persons_removed': instance.personsRemoved,
+      'faces_removed': instance.facesRemoved,
+      'face_crops_deleted': instance.faceCropsDeleted,
+      'search_history_deleted': instance.searchHistoryDeleted,
+      'consents_revoked': instance.consentsRevoked,
+      'deleted_at': instance.deletedAt,
+    };
+
+AccountDeletionResponse _$AccountDeletionResponseFromJson(
+        Map<String, dynamic> json) =>
+    AccountDeletionResponse(
+      selfieObjectsDeleted: (json['selfie_objects_deleted'] as num).toInt(),
+      personsRemoved: (json['persons_removed'] as num).toInt(),
+      facesRemoved: (json['faces_removed'] as num).toInt(),
+      albumsDeleted: (json['albums_deleted'] as num).toInt(),
+      photosDeleted: (json['photos_deleted'] as num).toInt(),
+      subscriptionsCancelled: (json['subscriptions_cancelled'] as num).toInt(),
+      sessionsRevoked: (json['sessions_revoked'] as num).toInt(),
+      deletedAt: json['deleted_at'] as String,
+    );
+
+Map<String, dynamic> _$AccountDeletionResponseToJson(
+        AccountDeletionResponse instance) =>
+    <String, dynamic>{
+      'selfie_objects_deleted': instance.selfieObjectsDeleted,
+      'persons_removed': instance.personsRemoved,
+      'faces_removed': instance.facesRemoved,
+      'albums_deleted': instance.albumsDeleted,
+      'photos_deleted': instance.photosDeleted,
+      'subscriptions_cancelled': instance.subscriptionsCancelled,
+      'sessions_revoked': instance.sessionsRevoked,
+      'deleted_at': instance.deletedAt,
+    };

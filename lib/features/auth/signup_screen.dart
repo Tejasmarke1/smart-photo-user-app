@@ -78,16 +78,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       final dio = Dio();
       final client = ApiClient(dio);
       
-      // Step 1: Upload the selfie (private; authorised by the signup token)
+      // Step 1: Send the selfie for validation. The server does not keep signup selfies by
+      // default, so no URL comes back (stored == false) and the account is created without one.
       final uploadResponse = await client.uploadProfilePicture(
         _capturedPhoto!,
         signupToken: widget.tempToken,
       );
       final profilePicUrl = uploadResponse['url']?.toString();
-
-      if (profilePicUrl == null) {
-        throw Exception("Failed to retrieve profile image URL");
-      }
 
       // Step 2: Proceed with signup registration
       final request = SignupRequest(

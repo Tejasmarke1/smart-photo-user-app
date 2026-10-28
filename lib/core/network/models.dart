@@ -698,3 +698,71 @@ class SubscriptionResponse {
   Map<String, dynamic> toJson() => _$SubscriptionResponseToJson(this);
 }
 
+// ==========================================
+// Account & face-data deletion
+// ==========================================
+
+@JsonSerializable()
+class FaceDataDeletionResponse {
+  @JsonKey(name: 'selfie_objects_deleted')
+  final int selfieObjectsDeleted;
+  @JsonKey(name: 'persons_removed')
+  final int personsRemoved;
+  @JsonKey(name: 'faces_removed')
+  final int facesRemoved;
+  @JsonKey(name: 'face_crops_deleted')
+  final int faceCropsDeleted;
+  @JsonKey(name: 'search_history_deleted')
+  final int searchHistoryDeleted;
+  @JsonKey(name: 'consents_revoked')
+  final int consentsRevoked;
+  @JsonKey(name: 'deleted_at')
+  final String deletedAt;
+
+  FaceDataDeletionResponse({
+    required this.selfieObjectsDeleted,
+    required this.personsRemoved,
+    required this.facesRemoved,
+    required this.faceCropsDeleted,
+    required this.searchHistoryDeleted,
+    required this.consentsRevoked,
+    required this.deletedAt,
+  });
+
+  factory FaceDataDeletionResponse.fromJson(Map<String, dynamic> json) => _$FaceDataDeletionResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$FaceDataDeletionResponseToJson(this);
+}
+
+@JsonSerializable()
+class AccountDeletionResponse {
+  @JsonKey(name: 'selfie_objects_deleted')
+  final int selfieObjectsDeleted;
+  @JsonKey(name: 'persons_removed')
+  final int personsRemoved;
+  @JsonKey(name: 'faces_removed')
+  final int facesRemoved;
+  @JsonKey(name: 'albums_deleted')
+  final int albumsDeleted;
+  @JsonKey(name: 'photos_deleted')
+  final int photosDeleted;
+  @JsonKey(name: 'subscriptions_cancelled')
+  final int subscriptionsCancelled;
+  @JsonKey(name: 'sessions_revoked')
+  final int sessionsRevoked;
+  @JsonKey(name: 'deleted_at')
+  final String deletedAt;
+
+  AccountDeletionResponse({
+    required this.selfieObjectsDeleted,
+    required this.personsRemoved,
+    required this.facesRemoved,
+    required this.albumsDeleted,
+    required this.photosDeleted,
+    required this.subscriptionsCancelled,
+    required this.sessionsRevoked,
+    required this.deletedAt,
+  });
+
+  factory AccountDeletionResponse.fromJson(Map<String, dynamic> json) => _$AccountDeletionResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$AccountDeletionResponseToJson(this);
+}

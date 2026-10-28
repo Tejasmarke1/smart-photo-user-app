@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/network/api_client.dart';
+import '../../core/network/api_error.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/notification_service.dart';
@@ -140,6 +142,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _buildSubMenuItem('Face Data Management', onTap: () => context.push('/face-data-management')),
                 _buildSubMenuItem('Download Permissions', onTap: () => context.push('/download-permissions')),
                 _buildSubMenuItem('Blocked Users', onTap: () => context.push('/blocked-users')),
+                _buildSubMenuItem('Delete Account', onTap: _confirmDeleteAccount),
               ],
             ),
 
@@ -613,6 +616,130 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           duration: const Duration(milliseconds: 250),
         ),
       ],
+    );
+  }
+
+  /// Asks for a typed confirmation, then deletes the account on the server. Only signs out
+  /// once the server confirms; an account that owns albums needs a second, explicit yes.
+  Future<void> _confirmDeleteAccount() async {
+    final typed = await _askTypedConfirmation(
+      title: 'Delete account?',
+      body: 'This permanently deletes your account, your selfie images, your face data and your '
+          'search history, and cancels your subscription. This cannot be undone.',
+    );
+    if (typed != true || !mounted) return;
+
+    var deleteOwnedAlbums = false;
+    while (true) {
+      try {
+        _showBlockingProgress();
+        await ref.read(apiClientProvider).deleteAccount({
+          'confirm': 'DELETE',
+          'delete_owned_albums': deleteOwnedAlbums,
+        });
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pop();
+        await ref.read(authProvider.notifier).logout();
+        if (mounted) context.go('/login');
+        return;
+      } catch (error) {
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pop();
+        final apiError = parseApiError(error, fallback: 'Could not delete your account. Please try again.');
+        if (apiError.ownsAlbums && !deleteOwnedAlbums) {
+          final count = apiError.detail['album_count'];
+          final agreed = await _askYesNo(
+            title: 'You own albums',
+            body: 'Your account owns ${count ?? 'some'} album(s). Deleting your account will also '
+                'permanently delete those albums and every photo in them for everyone who has access.',
+            yes: 'Delete albums too',
+          );
+          if (agreed != true || !mounted) return;
+          deleteOwnedAlbums = true;
+          continue;
+        }
+        _showMessage(apiError.message);
+        return;
+      }
+    }
+  }
+
+  void _showBlockingProgress() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: LuminaTokens.primaryLight)),
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message, style: GoogleFonts.inter(color: Colors.white, fontSize: 13)),
+      backgroundColor: LuminaTokens.darkSurface,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  Future<bool?> _askYesNo({required String title, required String body, required String yes}) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: LuminaTokens.darkSurface,
+        title: Text(title, style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(body, style: GoogleFonts.inter(color: LuminaTokens.darkTextMuted, fontSize: 13, height: 1.4)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: GoogleFonts.inter(color: LuminaTokens.darkTextMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(yes, style: GoogleFonts.inter(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The user must type DELETE before the destructive button enables.
+  Future<bool?> _askTypedConfirmation({required String title, required String body}) {
+    final controller = TextEditingController();
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: LuminaTokens.darkSurface,
+          title: Text(title, style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(body, style: GoogleFonts.inter(color: LuminaTokens.darkTextMuted, fontSize: 13, height: 1.4)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: GoogleFonts.inter(color: Colors.white),
+                decoration: const InputDecoration(hintText: 'Type DELETE to confirm'),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel', style: GoogleFonts.inter(color: LuminaTokens.darkTextMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: controller.text == 'DELETE' ? () => Navigator.pop(context, true) : null,
+              child: Text('Delete account', style: GoogleFonts.inter(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
